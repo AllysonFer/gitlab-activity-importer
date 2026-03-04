@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 	"sync"
@@ -118,8 +117,8 @@ func GetProjectCommits(projectId int, gitlabUserName string) ([]internal.Commit,
 	client := &http.Client{Timeout: 30 * time.Second}
 	for page := 1; ; {
 		req, err := http.NewRequestWithContext(context.Background(), "GET",
-			fmt.Sprintf("%s/api/v4/projects/%d/repository/commits?author=%s&per_page=100&page=%d",
-				base, projectId, url.QueryEscape(gitlabUserName), page), nil)
+			fmt.Sprintf("%s/api/v4/projects/%d/repository/commits?per_page=100&page=%d",
+				base, projectId, page), nil)
 		if err != nil {
 			return nil, fmt.Errorf("error fetching the commits: %w", err)
 		}
@@ -144,7 +143,11 @@ func GetProjectCommits(projectId int, gitlabUserName string) ([]internal.Commit,
 				return
 			}
 
-			allCommits = append(allCommits, batch...)
+			for _, commit := range batch {
+				if commit.AuthorName == "Allyson Fernando" {
+					allCommits = append(allCommits, commit)
+				}
+			}
 			next = res.Header.Get("X-Next-Page")
 		}()
 		if err != nil {
