@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"sync"
 	"time"
@@ -65,7 +64,7 @@ func main() {
 		log.Printf("Imported %v commits.\n", totalCommits)
 	}()
 
-	services.FetchAllCommits(projectIds, os.Getenv("GITLAB_USERNAME"), commitChannel)
+	services.FetchAllCommits(projectIds, gitlabUser.Username, commitChannel)
 
 	wg.Wait()
 

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"sync"
@@ -116,9 +117,22 @@ func GetProjectCommits(projectId int, gitlabUserName string) ([]internal.Commit,
 	var allCommits []internal.Commit
 	client := &http.Client{Timeout: 30 * time.Second}
 	for page := 1; ; {
+		commitsURL, err := url.Parse(fmt.Sprintf("%s/api/v4/projects/%d/repository/commits", base, projectId))
+		if err != nil {
+			return nil, fmt.Errorf("error building commits url: %w", err)
+		}
+
+		query := commitsURL.Query()
+		query.Set("per_page", "100")
+		query.Set("page", strconv.Itoa(page))
+		query.Set("all", "true")
+		if gitlabUserName != "" {
+			query.Set("author", gitlabUserName)
+		}
+		commitsURL.RawQuery = query.Encode()
+
 		req, err := http.NewRequestWithContext(context.Background(), "GET",
-			fmt.Sprintf("%s/api/v4/projects/%d/repository/commits?per_page=100&page=%d",
-				base, projectId, page), nil)
+			commitsURL.String(), nil)
 		if err != nil {
 			return nil, fmt.Errorf("error fetching the commits: %w", err)
 		}
@@ -142,12 +156,7 @@ func GetProjectCommits(projectId int, gitlabUserName string) ([]internal.Commit,
 				err = fmt.Errorf("error parsing JSON: %w", derr)
 				return
 			}
-
-			for _, commit := range batch {
-				if commit.AuthorName == "Allyson Fernando" {
-					allCommits = append(allCommits, commit)
-				}
-			}
+			allCommits = append(allCommits, batch...)
 			next = res.Header.Get("X-Next-Page")
 		}()
 		if err != nil {
